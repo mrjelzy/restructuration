@@ -1,1 +1,3 @@
 /src/main/resources/projectPath.txt
+/target/classes/projectPath.txt
+.DS_Store
