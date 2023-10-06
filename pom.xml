@@ -1,0 +1,20 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>hai913i.tp1</groupId>
+  <artifactId>hai913i.tp1</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>hai913i.tp1</name>
+  <description>Evolution et Restructuration AST</description>
+  <dependencies>
+	  <dependency>
+	    <groupId>org.eclipse.jdt</groupId>
+	    <artifactId>org.eclipse.jdt.core</artifactId>
+	    <version>3.35.0</version>
+	</dependency>
+	<dependency>
+		<groupId>commons-io</groupId>
+		<artifactId>commons-io</artifactId>
+		<version>2.11.0</version>
+	</dependency>
+  </dependencies>
+</project>
