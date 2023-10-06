@@ -20,6 +20,8 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
+import part2.MethodDeclarationVisitor;
+
 public class Parser {
 	
 	public static final String projectPath = "/Users/ryan/Desktop/Cours/M2/Ryan/Evolution-et-restructuration/TP1-Prise-en-main/org.anonbnr.design_patterns-main";

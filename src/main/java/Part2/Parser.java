@@ -1,4 +1,4 @@
-package Part2;
+package part2;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,9 +38,6 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.internal.compiler.batch.Main;
-
-import step2.MethodDeclarationVisitor;
-import step2.TypeDeclarationVisitor;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
 
@@ -79,15 +76,7 @@ public class Parser {
 			// System.out.println(content);
 
 			CompilationUnit parse = parse(content.toCharArray());
-
-			// print methods info
-			//printMethodInfo(parse);
-
-			// print variables info
-			//printVariableInfo(parse);
-			
-			//print method invocations
-			//printMethodInvocationInfo(parse);
+			  
 			numberClasses += countNbClasses(parse);
 			numberMethods += countNbMethods(parse);
 			countNbPackages(parse, packageVisitor);
@@ -105,16 +94,14 @@ public class Parser {
 		float averageLinesByMethod = numberLinesInMethods / (float)numberMethods;
 		float averageAttributsByClass = numberAttributs / (float)numberClasses;
 		
-		System.out.println("Nombre de classes : " + numberClasses);
-		System.out.println("Nombre de lignes de code de l'application :");
-		System.out.println("Nombre de methodes : " + numberMethods);
-		System.out.println("Nombre de packages : " + numberPackages);
-		System.out.println("Nombre d'attibuts : " + numberAttributs);
-		
-		
-		System.out.println("Nombre moyen de methodes par classe : " + averageMethodsByClass);
-		System.out.println("Nombre moyen de lignes de code par méthode : " + averageLinesByMethod);
-		System.out.println("Nombre moyen d’attributs par classe : " + averageAttributsByClass);
+		System.out.println("Exercice 1 :");
+		System.out.println("1. Nombre de classes : " + numberClasses);
+		System.out.println("2. Nombre de lignes de code de l’application : ");
+		System.out.println("3. Nombre total de méthodes de l’application : " + numberMethods);
+		System.out.println("4. Nombre total de packages de l’application : " + numberPackages);
+		System.out.println("5. Nombre moyen de methodes par classe : " + averageMethodsByClass);
+		System.out.println("6. Nombre moyen de lignes de code par méthode : " + averageLinesByMethod);
+		System.out.println("7. Nombre moyen d’attributs par classe : " + averageAttributsByClass);
 		
 		
 		Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
