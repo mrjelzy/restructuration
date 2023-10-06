@@ -16,5 +16,10 @@
 		<artifactId>commons-io</artifactId>
 		<version>2.11.0</version>
 	</dependency>
+	<dependency>
+	    <groupId>org.apache.poi</groupId>
+	    <artifactId>poi-scratchpad</artifactId>
+	    <version>5.0.0</version> <!-- Assurez-vous d'utiliser la version la plus récente -->
+	</dependency>
   </dependencies>
 </project>

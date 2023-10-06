@@ -1,7 +1,14 @@
 package Part2;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -14,6 +21,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.poi.hwpf.HWPFDocument;
+import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.eclipse.core.internal.utils.FileUtil;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -28,6 +37,7 @@ import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.internal.compiler.batch.Main;
 
 import step2.MethodDeclarationVisitor;
 import step2.TypeDeclarationVisitor;
@@ -35,14 +45,17 @@ import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
 
 public class Parser {
-	
-	public static final String projectPath = "/Users/ryan/Desktop/Cours/M2/Ryan/Evolution-et-restructuration/TP1-Prise-en-main/org.anonbnr.design_patterns-main";
-	public static final String projectSourcePath = projectPath + "/src";
-	public static final String jrePath = "/System/Library/Frameworks/JavaVM.framework/";
+
+	private static String projectSourcePath;
+	private static String jrePath = "/System/Library/Frameworks/JavaVM.framework/";
 
 	public static void main(String[] args) throws IOException {
 		
 		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
+
+        // Utilisation du ClassLoader pour charger la ressource du fichier.
+        ClassLoader classLoader = Main.class.getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream("projectPath.txt");
 		
 		int numberClasses = 0;
 		int numberMethods = 0;
@@ -53,6 +66,8 @@ public class Parser {
 		Map<String, Integer> classMethodCountMap = new HashMap<String, Integer>();
 		Map<String, Integer> classAttributCountMap = new HashMap<String, Integer>();
 
+		String projectPath = (getLink(inputStream));
+		projectSourcePath = projectPath + "/src";
 		
 		// read java files
 		final File folder = new File(projectSourcePath);
@@ -263,9 +278,26 @@ public class Parser {
 	       return sortedHashMap;
 	 }
 	
-	
-
-	
+	public static String getLink(InputStream inputStream) throws IOException
+	{
+		if (inputStream != null) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)))
+            {
+                StringBuilder contenu = new StringBuilder();
+                String ligne;
+                while ((ligne = reader.readLine()) != null)
+                {
+                    contenu.append(ligne);
+                }
+                return(contenu.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.err.println("Le fichier n'a pas été trouvé.");
+        }
+		return null;
+    }
 
 
 }
