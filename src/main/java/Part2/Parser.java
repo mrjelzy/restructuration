@@ -108,13 +108,41 @@ public class Parser {
 		
 		Map<String, Integer> classAttributCountMapSorted = sortDescending(classAttributCountMap);
 		
-        for (Map.Entry<String, Integer> entry : classMethodCountMapSorted.entrySet()) {
-            System.out.println("Classe : " + entry.getKey() + ", Nombre de méthodes : " + entry.getValue());
+		Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
+		Map<String, Integer> top10ClassAttribut = getTopPercentage(classAttributCountMapSorted, 0.1);
+		
+		
+		System.out.println("8. Les 10% des classes qui possèdent le plus grand nombre de méthodes : " );
+        for (Map.Entry<String, Integer> entry : top10ClassMethod.entrySet()) {
+        	System.out.println("- " + entry.getKey());
         }
         
-        for (Map.Entry<String, Integer> entry : classAttributCountMapSorted.entrySet()) {
-            System.out.println("Classe : " + entry.getKey() + ", Nombre d'attributs : " + entry.getValue());
+		System.out.println("9. Les 10% des classes qui possèdent le plus grand nombre d’attributs : " );
+        for (Map.Entry<String, Integer> entry : top10ClassAttribut.entrySet()) {
+        	System.out.println("- " + entry.getKey() );
         }
+        
+        System.out.println("10. Les classes qui font partie en même temps des deux catégories précédentes" );
+        for (Map.Entry<String, Integer> entryMethod : top10ClassMethod.entrySet()) {
+            String className = entryMethod.getKey();
+            if (top10ClassAttribut.containsKey(className)) {
+                System.out.println("- " + className);
+            }
+        }
+        
+        int X = 10;
+        System.out.println("11. Les classes qui possèdent plus de " + X + " méthodes :");
+        for (Map.Entry<String, Integer> entry : classMethodCountMapSorted.entrySet()) {
+            String className = entry.getKey();
+            int methodCount = entry.getValue();
+
+            if (methodCount > X) {
+                System.out.println("- " + className);
+            }
+        }
+        
+        System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code (par classe)");
+
 		
 	}
 
@@ -246,6 +274,25 @@ public class Parser {
         }
 		
 	}
+	
+    private static Map<String, Integer> getTopPercentage(Map<String, Integer> sortedMap, double percentage) {
+        int size = sortedMap.size();
+        int countToKeep = (int) (size * percentage);
+
+        Map<String, Integer> topPercentageMap = new HashMap<>();
+
+        int count = 0;
+        for (Map.Entry<String, Integer> entry : sortedMap.entrySet()) {
+            if (count < countToKeep) {
+                topPercentageMap.put(entry.getKey(), entry.getValue());
+                count++;
+            }
+        }
+
+        return topPercentageMap;
+    }
+	
+
 	
 	private static HashMap sortDescending(Map map) {
 	       List linkedlist = new LinkedList(map.entrySet());
