@@ -47,28 +47,28 @@ public class Parser {
 	private static String jrePath = "/System/Library/Frameworks/JavaVM.framework/";
 
 	public static void main(String[] args) throws IOException {
-		
-		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
-
+				
         // Utilisation du ClassLoader pour charger la ressource du fichier.
         ClassLoader classLoader = Main.class.getClassLoader();
         InputStream inputStream = classLoader.getResourceAsStream("projectPath.txt");
 		
-		int numberClasses = 0;
-		int numberMethods = 0;
-		int numberPackages = 0;
-		long numberLinesInMethods = 0;
-		int numberAttributs = 0;
-		
-		Map<String, Integer> classMethodCountMap = new HashMap<String, Integer>();
-		Map<String, Integer> classAttributCountMap = new HashMap<String, Integer>();
-
 		String projectPath = (getLink(inputStream));
 		projectSourcePath = projectPath + "/src";
 		
 		// read java files
 		final File folder = new File(projectSourcePath);
 		ArrayList<File> javaFiles = listJavaFilesForFolder(folder);
+		
+		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
+		MethodDeclarationVisitor methodVisitor = new MethodDeclarationVisitor();
+		TypeDeclarationVisitor classVisitor = new TypeDeclarationVisitor();
+		FieldDeclarationVisitor fieldVisitor = new FieldDeclarationVisitor();
+		
+		Map<String, Integer> classMethodCountMap = new HashMap<String, Integer>();
+		Map<String, Integer> classAttributCountMap = new HashMap<String, Integer>();
+		Map<String, Integer> MethodLineCountMap = new HashMap<String, Integer>();
+		
+		int nbLines = 0;
 
 		//
 		for (File fileEntry : javaFiles) {
@@ -76,19 +76,24 @@ public class Parser {
 			// System.out.println(content);
 
 			CompilationUnit parse = parse(content.toCharArray());
+			nbLines += countLineNumber(parse);
 			  
-			numberClasses += countNbClasses(parse);
-			numberMethods += countNbMethods(parse);
-			countNbPackages(parse, packageVisitor);
-			numberLinesInMethods += countMethodsLines(parse);
-			numberAttributs += countNbAttributs(parse);
+			visitAllClasses(parse, classVisitor);
+			visitAllPackages(parse, packageVisitor);
+			visitAllMethods(parse, methodVisitor);
+			visitAllFields(parse,fieldVisitor);
 			
-			top10PercentClassesByMethodCount(parse, classMethodCountMap);
-			top10PercentClassesByAttributCount(parse, classAttributCountMap);
+			ClassesByMethodCount(parse, classMethodCountMap);
+			ClassesByAttributCount(parse, classAttributCountMap);
 
 		}
 		
-		numberPackages = packageVisitor.getPackages().size();
+		int numberLinesInMethods = countMethodsLines(methodVisitor);
+		
+		int numberPackages = packageVisitor.getPackages().size();
+		int numberClasses = classVisitor.getTypes().size();
+		int numberMethods = methodVisitor.getMethods().size();
+		int numberAttributs = fieldVisitor.getFields().size();
 				
 		float averageMethodsByClass = numberMethods / (float)numberClasses;
 		float averageLinesByMethod = numberLinesInMethods / (float)numberMethods;
@@ -96,28 +101,23 @@ public class Parser {
 		
 		System.out.println("Exercice 1 :");
 		System.out.println("1. Nombre de classes : " + numberClasses);
-		System.out.println("2. Nombre de lignes de code de l’application : ");
+		System.out.println("2. Nombre de lignes de code de l’application : " + nbLines);
 		System.out.println("3. Nombre total de méthodes de l’application : " + numberMethods);
 		System.out.println("4. Nombre total de packages de l’application : " + numberPackages);
 		System.out.println("5. Nombre moyen de methodes par classe : " + averageMethodsByClass);
 		System.out.println("6. Nombre moyen de lignes de code par méthode : " + averageLinesByMethod);
 		System.out.println("7. Nombre moyen d’attributs par classe : " + averageAttributsByClass);
-		
-		
-		Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
-		
-		Map<String, Integer> classAttributCountMapSorted = sortDescending(classAttributCountMap);
-		
-		Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
-		Map<String, Integer> top10ClassAttribut = getTopPercentage(classAttributCountMapSorted, 0.1);
-		
-		
+				
 		System.out.println("8. Les 10% des classes qui possèdent le plus grand nombre de méthodes : " );
+		Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
+		Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
         for (Map.Entry<String, Integer> entry : top10ClassMethod.entrySet()) {
         	System.out.println("- " + entry.getKey());
         }
         
 		System.out.println("9. Les 10% des classes qui possèdent le plus grand nombre d’attributs : " );
+		Map<String, Integer> classAttributCountMapSorted = sortDescending(classAttributCountMap);
+		Map<String, Integer> top10ClassAttribut = getTopPercentage(classAttributCountMapSorted, 0.1);
         for (Map.Entry<String, Integer> entry : top10ClassAttribut.entrySet()) {
         	System.out.println("- " + entry.getKey() );
         }
@@ -141,9 +141,18 @@ public class Parser {
             }
         }
         
-        System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code (par classe)");
+        System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code");
+		MethodsByLineCount(MethodLineCountMap, methodVisitor);
+		Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
+		Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
+        for (Map.Entry<String, Integer> entry : top10MethodsByLineCount.entrySet()) {
+            String methodName = entry.getKey();
+            int methodCount = entry.getValue();
+            System.out.println("- " + methodName + " : " + methodCount);
+        }
 
-		
+        System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application.");
+        showMethodWithMaximalParameters(methodVisitor);
 	}
 
 	// read all java files from specific folder
@@ -182,32 +191,29 @@ public class Parser {
 		
 		return (CompilationUnit) parser.createAST(null); // create and parse
 	}
-
-	// navigate method information
-	public static int countNbMethods(CompilationUnit parse) {
-		MethodDeclarationVisitor visitor = new MethodDeclarationVisitor();
-		parse.accept(visitor);
-		
-		return visitor.getMethods().size();
-
-	}
 	
-	public static int countNbClasses(CompilationUnit parse) {
-		TypeDeclarationVisitor visitor = new TypeDeclarationVisitor();
-		parse.accept(visitor);
-		
-
-		return visitor.getTypes().size();
+	public static int countLineNumber(CompilationUnit parse) {
+		return parse.getLineNumber(parse.getLength() - 1);
 	}
+
 	
-	public static void countNbPackages(CompilationUnit parse, PackageDeclarationVisitor visitor) {
+	public static void visitAllClasses(CompilationUnit parse, TypeDeclarationVisitor visitor) {
 		parse.accept(visitor);
 	}
 	
-
-	public static int countMethodsLines(CompilationUnit parse) {
-		MethodDeclarationVisitor visitor = new MethodDeclarationVisitor();
+	public static void visitAllPackages(CompilationUnit parse, PackageDeclarationVisitor visitor) {
 		parse.accept(visitor);
+	}
+	
+	public static void visitAllMethods(CompilationUnit parse, MethodDeclarationVisitor visitor) {
+		parse.accept(visitor);
+	}
+	
+	public static void visitAllFields(CompilationUnit parse, FieldDeclarationVisitor visitor) {
+		parse.accept(visitor);
+	}
+
+	public static int countMethodsLines(MethodDeclarationVisitor visitor) {
 
 		int totalLinesOfCodeInMethod = 0;
 		
@@ -217,18 +223,9 @@ public class Parser {
 		}
 			
 		return totalLinesOfCodeInMethod;
-
-
 	}
 	
-	public static int countNbAttributs(CompilationUnit parse) {
-		FieldDeclarationVisitor visitor = new FieldDeclarationVisitor();
-		parse.accept(visitor);
-		
-		return visitor.getFields().size();
-	}
-	
-	public static void top10PercentClassesByMethodCount(CompilationUnit parse, Map<String, Integer> classMethodCountMap) {
+	public static void ClassesByMethodCount(CompilationUnit parse, Map<String, Integer> classMethodCountMap) {
 		
 		TypeDeclarationVisitor visitor = new TypeDeclarationVisitor();
 		
@@ -251,7 +248,7 @@ public class Parser {
         }
 	}
 		
-	public static void top10PercentClassesByAttributCount(CompilationUnit parse, Map<String, Integer> classAttributCountMap) {
+	public static void ClassesByAttributCount(CompilationUnit parse, Map<String, Integer> classAttributCountMap) {
 		
 		TypeDeclarationVisitor visitor = new TypeDeclarationVisitor();
 		
@@ -275,6 +272,19 @@ public class Parser {
 		
 	}
 	
+	public static void MethodsByLineCount(Map<String, Integer> MethodLineCountMap, MethodDeclarationVisitor visitor) {
+		int totalLinesOfCodeInMethod = 0;
+		
+        for (MethodDeclaration method : visitor.getMethods()) {
+        	if(method.getBody() != null) {
+	            String methodName = method.getName().getFullyQualifiedName();
+				totalLinesOfCodeInMethod = method.getBody().toString().split("\n").length - 2;
+	            MethodLineCountMap.put(methodName, totalLinesOfCodeInMethod);
+        	}
+        }
+		
+	}
+	
     private static Map<String, Integer> getTopPercentage(Map<String, Integer> sortedMap, double percentage) {
         int size = sortedMap.size();
         int countToKeep = (int) (size * percentage);
@@ -290,6 +300,23 @@ public class Parser {
         }
 
         return topPercentageMap;
+    }
+    
+    private static void showMethodWithMaximalParameters(MethodDeclarationVisitor visitor){
+    	int maxParameters = 0;
+		MethodDeclaration bestMethod = null;
+		
+    	for(MethodDeclaration method : visitor.getMethods()) {
+    		int nbParameters = method.parameters().size();
+    		
+			if (nbParameters > maxParameters) {
+				maxParameters = method.parameters().size();
+				bestMethod = method;
+			}
+    	}
+    	
+    	System.out.println("Le nombre maximal de paramètre(s) pour une methode dans toute l'application : " + maxParameters);
+		System.out.println("La methode ayant ce nombre de paramètre(s) est : " + bestMethod.getName());
     }
 	
 
