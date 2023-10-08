@@ -2,15 +2,12 @@ package part2;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,27 +17,17 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Scanner;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.poi.hwpf.HWPFDocument;
-import org.apache.poi.hwpf.extractor.WordExtractor;
-import org.eclipse.core.internal.utils.FileUtil;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.internal.compiler.batch.Main;
 
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
@@ -51,13 +38,10 @@ import org.jgrapht.nio.dot.DOTExporter;
 
 import graph.Link;
 import graph.Node;
-import guru.nidi.graphviz.engine.Format;
-import guru.nidi.graphviz.engine.Graphviz;
-import guru.nidi.graphviz.engine.GraphvizJdkEngine;
+
 import guru.nidi.graphviz.model.MutableGraph;
 
 import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.core.dom.PackageDeclaration;
 
 public class Parser {
 
@@ -66,17 +50,73 @@ public class Parser {
 
 	public static void main(String[] args) throws IOException {
 				
-        // Utilisation du ClassLoader pour charger la ressource du fichier.
-        ClassLoader classLoader = Main.class.getClassLoader();
-        InputStream inputStream = classLoader.getResourceAsStream("projectPath.txt");
+		Properties properties = new Properties();
+		String projectPath = null;
 		
-		String projectPath = (getLink(inputStream));
+		try (InputStream fis = new FileInputStream("src/main/resources/projectPath.properties"))
+		{
+			properties.load(fis);
+            projectPath = properties.getProperty("path");
+
+        } catch (IOException io) {
+            io.printStackTrace();
+        }
+        
 		projectSourcePath = projectPath + "/src";
 		
 		// read java files
 		final File folder = new File(projectSourcePath);
 		ArrayList<File> javaFiles = listJavaFilesForFolder(folder);
 		
+		String rep= "";
+		
+		while (!rep.equalsIgnoreCase("x"))
+		{
+			System.out.println("Bienvenue sur l'analyse de programme !");
+			System.out.println("1 -> Exercice 1");
+			System.out.println("2 -> Exercice 2");
+			System.out.println("x -> Exit");
+			Scanner scan = new Scanner(System.in);
+			rep = scan.next();
+			
+			if (rep.equalsIgnoreCase("1"))
+			{
+				rep= "";
+				System.out.print("Exercice 1 : Rentrer le numero de la question : ");
+				rep = scan.next();
+				System.out.println("Traitement en cours ...");
+				printExo1(Integer.parseInt(rep), javaFiles);
+				
+			} else if (rep.equalsIgnoreCase("2"))
+			{
+				rep= "";
+				System.out.println("Exercice 2 :");
+				System.out.println("Traitement en cours ...");
+		        printExo2(javaFiles);
+			}
+			System.out.println("-----------------------------------");
+		}
+		
+		System.out.println("Au revoir !");
+	}
+	
+	private static void printExo2(ArrayList<File> javaFiles) throws IOException
+	{
+		TypeDeclarationVisitor classVisitor = new TypeDeclarationVisitor();
+		
+		for (File fileEntry : javaFiles) {
+			String content = FileUtils.readFileToString(fileEntry);
+			CompilationUnit parse = parse(content.toCharArray());
+			  
+			visitAllClasses(parse, classVisitor);
+		}
+        
+        printCallGraph(classVisitor);
+        System.out.println("Voici le graphe d'appel du programme analysé, le fichier .dot est automatiquement créé dans le dossier /résultats.");
+	}
+
+	private static void printExo1(Integer rep, ArrayList<File> javaFiles) throws IOException
+	{
 		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
 		MethodDeclarationVisitor methodVisitor = new MethodDeclarationVisitor();
 		TypeDeclarationVisitor classVisitor = new TypeDeclarationVisitor();
@@ -117,64 +157,254 @@ public class Parser {
 		float averageLinesByMethod = numberLinesInMethods / (float)numberMethods;
 		float averageAttributsByClass = numberAttributs / (float)numberClasses;
 		
-		System.out.println("Exercice 1 :");
-		System.out.println("1. Nombre de classes : " + numberClasses);
-		System.out.println("2. Nombre de lignes de code de l’application : " + nbLines);
-		System.out.println("3. Nombre total de méthodes de l’application : " + numberMethods);
-		System.out.println("4. Nombre total de packages de l’application : " + numberPackages);
-		System.out.println("5. Nombre moyen de methodes par classe : " + averageMethodsByClass);
-		System.out.println("6. Nombre moyen de lignes de code par méthode : " + averageLinesByMethod);
-		System.out.println("7. Nombre moyen d’attributs par classe : " + averageAttributsByClass);
-				
-		System.out.println("8. Les 10% des classes qui possèdent le plus grand nombre de méthodes : " );
-		Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
-		Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
-        for (Map.Entry<String, Integer> entry : top10ClassMethod.entrySet()) {
-        	System.out.println("- " + entry.getKey());
-        }
-        
-		System.out.println("9. Les 10% des classes qui possèdent le plus grand nombre d’attributs : " );
 		Map<String, Integer> classAttributCountMapSorted = sortDescending(classAttributCountMap);
 		Map<String, Integer> top10ClassAttribut = getTopPercentage(classAttributCountMapSorted, 0.1);
-        for (Map.Entry<String, Integer> entry : top10ClassAttribut.entrySet()) {
-        	System.out.println("- " + entry.getKey() );
-        }
-        
-        System.out.println("10. Les classes qui font partie en même temps des deux catégories précédentes" );
-        for (Map.Entry<String, Integer> entryMethod : top10ClassMethod.entrySet()) {
-            String className = entryMethod.getKey();
-            if (top10ClassAttribut.containsKey(className)) {
-                System.out.println("- " + className);
-            }
-        }
-        
-        int X = 10;
-        System.out.println("11. Les classes qui possèdent plus de " + X + " méthodes :");
-        for (Map.Entry<String, Integer> entry : classMethodCountMapSorted.entrySet()) {
-            String className = entry.getKey();
-            int methodCount = entry.getValue();
-
-            if (methodCount > X) {
-                System.out.println("- " + className);
-            }
-        }
-        
-        System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code");
-		MethodsByLineCount(MethodLineCountMap, methodVisitor);
+		
+		Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
+		Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
+		
 		Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
 		Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
-        for (Map.Entry<String, Integer> entry : top10MethodsByLineCount.entrySet()) {
-            String methodName = entry.getKey();
-            int methodCount = entry.getValue();
-            System.out.println("- " + methodName + " : " + methodCount);
-        }
-
-        System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application.");
-        showMethodWithMaximalParameters(methodVisitor);
-        
-        System.out.println("Exercice 2 :");
-        printCallGraph(classVisitor);
+		
+		System.out.println("-----------------------------------");
+		
+		switch (rep)
+		{
+			case 1:
+				System.out.println("1. Nombre de classes : " + numberClasses);
+				break;
+			case 2:
+				System.out.println("2. Nombre de lignes de code de l’application : " + nbLines);
+				break;
+			case 3:
+				System.out.println("3. Nombre total de méthodes de l’application : " + numberMethods);
+				break;
+			case 4:
+				System.out.println("4. Nombre total de packages de l’application : " + numberPackages);
+				break;
+			case 5:
+				System.out.println("5. Nombre moyen de methodes par classe : " + averageMethodsByClass);
+				break;
+			case 6:
+				System.out.println("6. Nombre moyen de lignes de code par méthode : " + averageLinesByMethod);
+				break;
+			case 7:
+				System.out.println("7. Nombre moyen d’attributs par classe : " + averageAttributsByClass);
+				break;
+			case 8:
+				System.out.println("8. Les 10% des classes qui possèdent le plus grand nombre de méthodes : " );
+				
+		        for (Map.Entry<String, Integer> entry : top10ClassMethod.entrySet()) {
+		        	System.out.println("- " + entry.getKey());
+		        }
+		        break;
+			case 9:
+				System.out.println("9. Les 10% des classes qui possèdent le plus grand nombre d’attributs : " );
+				
+		        for (Map.Entry<String, Integer> entry : top10ClassAttribut.entrySet()) {
+		        	System.out.println("- " + entry.getKey() );
+		        }
+		        break;
+			case 10:
+				System.out.println("10. Les classes qui font partie en même temps des deux catégories précédentes" );
+		        for (Map.Entry<String, Integer> entryMethod : top10ClassMethod.entrySet()) {
+		            String className = entryMethod.getKey();
+		            if (top10ClassAttribut.containsKey(className)) {
+		                System.out.println("- " + className);
+		            }
+		        }
+		        break;
+			case 11:
+				int X = 10;
+		        System.out.println("11. Les classes qui possèdent plus de " + X + " méthodes :");
+		        for (Map.Entry<String, Integer> entry : classMethodCountMapSorted.entrySet())
+		        {
+		            String className = entry.getKey();
+		            int methodCount = entry.getValue();
+		            if (methodCount > X)
+		            {
+		                System.out.println("- " + className);
+		            }
+		        }
+		        break;
+			case 12:
+				System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code");
+				MethodsByLineCount(MethodLineCountMap, methodVisitor);
+				
+		        for (Map.Entry<String, Integer> entry : top10MethodsByLineCount.entrySet())
+		        {
+		            String methodName = entry.getKey();
+		            int methodCount = entry.getValue();
+		            System.out.println("- " + methodName + " : " + methodCount);
+		        }
+		        break;
+			case 13:
+				System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application.");
+		        showMethodWithMaximalParameters(methodVisitor);
+		        break;
+		}
 	}
+
+	/*
+	private static String printExo1(Integer rep, ArrayList<File> javaFiles) throws IOException
+	{
+		
+		String res = null;
+		
+		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
+		MethodDeclarationVisitor methodVisitor = new MethodDeclarationVisitor();
+		TypeDeclarationVisitor classVisitor = new TypeDeclarationVisitor();
+		FieldDeclarationVisitor fieldVisitor = new FieldDeclarationVisitor();
+		
+		Map<String, Integer> classMethodCountMap = new HashMap<String, Integer>();
+		Map<String, Integer> classAttributCountMap = new HashMap<String, Integer>();
+		Map<String, Integer> MethodLineCountMap = new HashMap<String, Integer>();
+		
+		switch (rep)
+		{
+			case 1:
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					visitAllClasses(parse, classVisitor);
+				}
+				
+				res = "Nombre de classes : " + classVisitor.getTypes().size();
+			
+			case 2:
+				int nbLines = 0;
+				
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					nbLines += countLineNumber(parse);
+				}
+				
+				res = "Nombre de lignes de code de l’application : " + nbLines;
+				
+			case 3:
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					visitAllMethods(parse, methodVisitor);
+				}
+				
+				res = "Nombre total de méthodes de l’application : " + methodVisitor.getMethods().size();
+				
+			case 4:
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					visitAllPackages(parse, packageVisitor);
+				}
+				
+				res = "Nombre total de méthodes de l’application : "+ packageVisitor.getPackages().size();
+				
+			case 5:
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					visitAllMethods(parse, methodVisitor);
+					visitAllClasses(parse, classVisitor);
+				}
+				
+				res = "Nombre total de méthodes de l’application : "+ methodVisitor.getMethods().size() / classVisitor.getTypes().size();
+				
+			case 6:
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					visitAllMethods(parse, methodVisitor);
+				}
+				
+				res = "Nombre moyen de lignes de code par méthode : "+ countMethodsLines(methodVisitor) / (float) methodVisitor.getMethods().size();
+				
+			case 7:
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					visitAllFields(parse,fieldVisitor);
+					visitAllClasses(parse, classVisitor);
+				}
+				
+				res = "Nombre moyen d’attributs par classe : " + fieldVisitor.getFields().size() / (float) classVisitor.getTypes().size();
+				
+			case 8:
+				res = "Les 10% des classes qui possèdent le plus grand nombre de méthodes : \n";
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					ClassesByMethodCount(parse, classMethodCountMap);
+				}
+				
+				Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
+				Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
+		        for (Map.Entry<String, Integer> entry : top10ClassMethod.entrySet())
+		        {
+		        	res+="- " + entry.getKey()+"\n";
+		        }
+		        
+			case 9:
+				res = "Les 10% des classes qui possèdent le plus grand nombre d’attributs : \n";
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					ClassesByAttributCount(parse, classAttributCountMap);
+				}
+				
+				Map<String, Integer> classAttributCountMapSorted = sortDescending(classAttributCountMap);
+				Map<String, Integer> top10ClassAttribut = getTopPercentage(classAttributCountMapSorted, 0.1);
+				
+		        for (Map.Entry<String, Integer> entry : top10ClassAttribut.entrySet()) {
+		        	res+="- " + entry.getKey()+"\n";
+		        }
+		       
+			case 10:
+				res = "Les classes qui font partie en même temps des deux catégories précédentes : \n";
+				for (File fileEntry : javaFiles)
+				{
+					String content = FileUtils.readFileToString(fileEntry);
+					CompilationUnit parse = parse(content.toCharArray());
+					
+					ClassesByAttributCount(parse, classAttributCountMap);
+					ClassesByMethodCount(parse, classMethodCountMap);
+				}
+				
+				Map<String, Integer> classAttributCountMapSorted2 = sortDescending(classAttributCountMap);
+				Map<String, Integer> classMethodCountMapSorted2 = sortDescending(classMethodCountMap);
+				Map<String, Integer> top10ClassMethod2 = getTopPercentage(classMethodCountMapSorted2, 0.1);
+				Map<String, Integer> top10ClassAttribut2 = getTopPercentage(classAttributCountMapSorted2, 0.1);
+				
+				for (Map.Entry<String, Integer> entryMethod : top10ClassMethod2.entrySet())
+				{
+		            String className = entryMethod.getKey();
+		            if (top10ClassAttribut2.containsKey(className)) {
+		                res+="- " + className+"\n";
+		            }
+		        }
+		}
+		
+		return res;
+	}
+	*/
 
 	// read all java files from specific folder
 	public static ArrayList<File> listJavaFilesForFolder(final File folder) {
@@ -451,6 +681,6 @@ public class Parser {
         MutableGraph mGraph = new guru.nidi.graphviz.parse.Parser().read(buffer.toString());
         System.out.println(buffer.toString());
 
-        //Graphviz.fromGraph(mGraph).height(1000).render(Format.PNG).toFile(new File("results/graph.png"));
+        //Graphviz.fromGraph(graph).height(1000).render(Format.PNG).toFile(new File("results/graph.png"));
 	}
 }
