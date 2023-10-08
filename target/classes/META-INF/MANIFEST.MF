@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Built-By: ryan
-Build-Jdk: 19.0.1
+Built-By: lololemono
+Build-Jdk: 17.0.5
 Created-By: Maven Integration for Eclipse
 

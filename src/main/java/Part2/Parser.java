@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +33,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
@@ -38,6 +41,21 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.internal.compiler.batch.Main;
+
+import org.jgrapht.Graph;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.nio.Attribute;
+import org.jgrapht.nio.DefaultAttribute;
+import org.jgrapht.nio.dot.DOTExporter;
+
+import graph.Link;
+import graph.Node;
+import guru.nidi.graphviz.engine.Format;
+import guru.nidi.graphviz.engine.Graphviz;
+import guru.nidi.graphviz.engine.GraphvizJdkEngine;
+import guru.nidi.graphviz.model.MutableGraph;
+
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
 
@@ -153,6 +171,9 @@ public class Parser {
 
         System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application.");
         showMethodWithMaximalParameters(methodVisitor);
+        
+        System.out.println("Exercice 2 :");
+        printCallGraph(classVisitor);
 	}
 
 	// read all java files from specific folder
@@ -359,6 +380,77 @@ public class Parser {
         }
 		return null;
     }
+	
+	public static void printCallGraph(TypeDeclarationVisitor classVisitor) throws IOException
+	{
+		List<Node> nodes = new ArrayList<Node>();
+		List<Link> links = new ArrayList<Link>();
+		
+		for(TypeDeclaration type : classVisitor.getTypes())
+		{
+			for(MethodDeclaration method : type.getMethods())
+			{
+				MethodInvocationVisitor methodInvVisitor = new MethodInvocationVisitor();
+				method.accept(methodInvVisitor);
+				
+				Node nodeMethodDecla = new Node(type.getName().toString() + "." + method.getName().toString());
+				nodes.add(nodeMethodDecla);
+				
+				
+				if (methodInvVisitor.getMethods().size() != 0)
+				{
 
+					for (MethodInvocation methodInvocation : methodInvVisitor.getMethods())
+					{
+						
+						if (methodInvocation.getExpression() != null)
+						{
+							
+							if (methodInvocation.getExpression().resolveTypeBinding() != null)
+							{
+								
+								Node nodeMethodInv = new Node(methodInvocation.getExpression().resolveTypeBinding().getName() + "." + methodInvocation.getName().toString());
+								nodes.add(nodeMethodInv);
+								links.add(new Link(nodeMethodDecla.getNode(), nodeMethodInv.getNode()));
+							}
+						}
+						else {
+							
+							Node nodeMethodInv = new Node(methodInvocation.getName().toString());
+							nodes.add(nodeMethodInv);
+							links.add(new Link(nodeMethodDecla.getNode(), nodeMethodInv.getNode()));
+						}
+					}
+				}
+			}
+		}
+		
+		
+		// Add vertex and edges to the graph
+		Graph<String, DefaultEdge> graph = new DefaultDirectedGraph<String, DefaultEdge>(DefaultEdge.class);
+		for (Node node : nodes) {
+			graph.addVertex(node.getNode());
+		}
+		for (Link link : links) {
+			graph.addEdge(link.getNodeA(), link.getNodeB());
+		}
+		
+		System.out.println(graph.toString());
 
+		// Export the graph in a dot file
+		DOTExporter<String, DefaultEdge> exporter = new DOTExporter<String, DefaultEdge>();
+        exporter.setVertexAttributeProvider((v) -> {
+            Map<String, Attribute> map = new LinkedHashMap<String, Attribute>();
+            map.put("label", DefaultAttribute.createAttribute(v.toString()));
+            return map;
+        });
+        Writer buffer = new StringWriter();
+        exporter.exportGraph(graph, buffer);
+        exporter.exportGraph(graph, new File("results/graph.dot"));
+        
+        MutableGraph mGraph = new guru.nidi.graphviz.parse.Parser().read(buffer.toString());
+        System.out.println(buffer.toString());
+
+        //Graphviz.fromGraph(mGraph).height(1000).render(Format.PNG).toFile(new File("results/graph.png"));
+	}
 }
