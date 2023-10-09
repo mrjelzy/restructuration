@@ -82,7 +82,21 @@ public class Parser {
 			if (rep.equalsIgnoreCase("1"))
 			{
 				rep= "";
-				System.out.print("Exercice 1 : Rentrer le numero de la question : ");
+				System.out.println("Exercice 1 :");
+				System.out.println("1. Nombres de classes de l'application");
+				System.out.println("2. Nombre de lignes de code de l’application");
+				System.out.println("3. Nombre total de méthodes de l’application");
+				System.out.println("4. Nombre total de packages de l’application");
+				System.out.println("5. Nombre moyen de methodes par classe");
+				System.out.println("6. Nombre moyen de lignes de code par méthode");
+				System.out.println("7. Nombre moyen d’attributs par classe");
+				System.out.println("8. Les 10% des classes qui possèdent le plus grand nombre de méthodes");
+				System.out.println("9. Les 10% des classes qui possèdent le plus grand nombre d’attributs");
+				System.out.println("10. Les classes qui font partie en même temps des deux catégories précédentes");
+				System.out.println("11. Les classes qui possèdent plus de X méthodes");
+				System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code");
+				System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application");
+				System.out.print("Rentrer le numero de la question : ");
 				rep = scan.next();
 				System.out.println("Traitement en cours ...");
 				printExo1(Integer.parseInt(rep), javaFiles);
@@ -166,7 +180,7 @@ public class Parser {
 		Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
 		Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
 		
-		System.out.println("-----------------------------------");
+		//System.out.println("-----------------------------------");
 		
 		switch (rep)
 		{
@@ -215,7 +229,9 @@ public class Parser {
 		        }
 		        break;
 			case 11:
-				int X = 10;
+				Scanner scan = new Scanner(System.in);
+				System.out.print("11. Rentrer un nombre de méthode par classes : ");
+				int X = Integer.parseInt(scan.next());
 		        System.out.println("11. Les classes qui possèdent plus de " + X + " méthodes :");
 		        for (Map.Entry<String, Integer> entry : classMethodCountMapSorted.entrySet())
 		        {
@@ -244,167 +260,6 @@ public class Parser {
 		        break;
 		}
 	}
-
-	/*
-	private static String printExo1(Integer rep, ArrayList<File> javaFiles) throws IOException
-	{
-		
-		String res = null;
-		
-		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
-		MethodDeclarationVisitor methodVisitor = new MethodDeclarationVisitor();
-		TypeDeclarationVisitor classVisitor = new TypeDeclarationVisitor();
-		FieldDeclarationVisitor fieldVisitor = new FieldDeclarationVisitor();
-		
-		Map<String, Integer> classMethodCountMap = new HashMap<String, Integer>();
-		Map<String, Integer> classAttributCountMap = new HashMap<String, Integer>();
-		Map<String, Integer> MethodLineCountMap = new HashMap<String, Integer>();
-		
-		switch (rep)
-		{
-			case 1:
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					visitAllClasses(parse, classVisitor);
-				}
-				
-				res = "Nombre de classes : " + classVisitor.getTypes().size();
-			
-			case 2:
-				int nbLines = 0;
-				
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					nbLines += countLineNumber(parse);
-				}
-				
-				res = "Nombre de lignes de code de l’application : " + nbLines;
-				
-			case 3:
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					visitAllMethods(parse, methodVisitor);
-				}
-				
-				res = "Nombre total de méthodes de l’application : " + methodVisitor.getMethods().size();
-				
-			case 4:
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					visitAllPackages(parse, packageVisitor);
-				}
-				
-				res = "Nombre total de méthodes de l’application : "+ packageVisitor.getPackages().size();
-				
-			case 5:
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					visitAllMethods(parse, methodVisitor);
-					visitAllClasses(parse, classVisitor);
-				}
-				
-				res = "Nombre total de méthodes de l’application : "+ methodVisitor.getMethods().size() / classVisitor.getTypes().size();
-				
-			case 6:
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					visitAllMethods(parse, methodVisitor);
-				}
-				
-				res = "Nombre moyen de lignes de code par méthode : "+ countMethodsLines(methodVisitor) / (float) methodVisitor.getMethods().size();
-				
-			case 7:
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					visitAllFields(parse,fieldVisitor);
-					visitAllClasses(parse, classVisitor);
-				}
-				
-				res = "Nombre moyen d’attributs par classe : " + fieldVisitor.getFields().size() / (float) classVisitor.getTypes().size();
-				
-			case 8:
-				res = "Les 10% des classes qui possèdent le plus grand nombre de méthodes : \n";
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					ClassesByMethodCount(parse, classMethodCountMap);
-				}
-				
-				Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
-				Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
-		        for (Map.Entry<String, Integer> entry : top10ClassMethod.entrySet())
-		        {
-		        	res+="- " + entry.getKey()+"\n";
-		        }
-		        
-			case 9:
-				res = "Les 10% des classes qui possèdent le plus grand nombre d’attributs : \n";
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					ClassesByAttributCount(parse, classAttributCountMap);
-				}
-				
-				Map<String, Integer> classAttributCountMapSorted = sortDescending(classAttributCountMap);
-				Map<String, Integer> top10ClassAttribut = getTopPercentage(classAttributCountMapSorted, 0.1);
-				
-		        for (Map.Entry<String, Integer> entry : top10ClassAttribut.entrySet()) {
-		        	res+="- " + entry.getKey()+"\n";
-		        }
-		       
-			case 10:
-				res = "Les classes qui font partie en même temps des deux catégories précédentes : \n";
-				for (File fileEntry : javaFiles)
-				{
-					String content = FileUtils.readFileToString(fileEntry);
-					CompilationUnit parse = parse(content.toCharArray());
-					
-					ClassesByAttributCount(parse, classAttributCountMap);
-					ClassesByMethodCount(parse, classMethodCountMap);
-				}
-				
-				Map<String, Integer> classAttributCountMapSorted2 = sortDescending(classAttributCountMap);
-				Map<String, Integer> classMethodCountMapSorted2 = sortDescending(classMethodCountMap);
-				Map<String, Integer> top10ClassMethod2 = getTopPercentage(classMethodCountMapSorted2, 0.1);
-				Map<String, Integer> top10ClassAttribut2 = getTopPercentage(classAttributCountMapSorted2, 0.1);
-				
-				for (Map.Entry<String, Integer> entryMethod : top10ClassMethod2.entrySet())
-				{
-		            String className = entryMethod.getKey();
-		            if (top10ClassAttribut2.containsKey(className)) {
-		                res+="- " + className+"\n";
-		            }
-		        }
-		}
-		
-		return res;
-	}
-	*/
 
 	// read all java files from specific folder
 	public static ArrayList<File> listJavaFilesForFolder(final File folder) {
