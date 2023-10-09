@@ -188,8 +188,8 @@ public class Parser {
 		Map<String, Integer> classMethodCountMapSorted = sortDescending(classMethodCountMap);
 		Map<String, Integer> top10ClassMethod = getTopPercentage(classMethodCountMapSorted, 0.1);
 		
-		Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
-		Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
+		// Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
+		// Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
 		
 		System.out.println("");
 		
@@ -259,11 +259,12 @@ public class Parser {
 				System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code");
 				MethodsByLineCount(MethodLineCountMap, methodVisitor);
 				
+				Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
+				Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
+				
 		        for (Map.Entry<String, Integer> entry : top10MethodsByLineCount.entrySet())
 		        {
-		            String methodName = entry.getKey();
-		            int methodCount = entry.getValue();
-		            System.out.println("- " + methodName + " : " + methodCount);
+		            System.out.println("- " + entry.getKey() + " : " + entry.getValue());
 		        }
 		        break;
 			case 13:
