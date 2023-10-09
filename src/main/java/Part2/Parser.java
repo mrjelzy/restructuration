@@ -40,8 +40,6 @@ import org.jgrapht.nio.dot.DOTExporter;
 import graph.Link;
 import graph.Node;
 
-//import guru.nidi.graphviz.model.MutableGraph;
-
 public class Parser {
 
 	private static String projectSourcePath;
@@ -465,9 +463,10 @@ public class Parser {
 	
 	public static void printCallGraph(TypeDeclarationVisitor classVisitor) throws IOException
 	{
-		List<Node> nodes = new ArrayList<Node>();
-		List<Link> links = new ArrayList<Link>();
+		List<Node> nodes = new ArrayList<Node>(); // Un noeud représente une méthode
+		List<Link> links = new ArrayList<Link>(); // Un link lie une méthode et une autre méthode qu'elle invoque
 		
+		// On remplis les listes de nodes et de links
 		for(TypeDeclaration type : classVisitor.getTypes())
 		{
 			for(MethodDeclaration method : type.getMethods())
@@ -475,8 +474,9 @@ public class Parser {
 				MethodInvocationVisitor methodInvVisitor = new MethodInvocationVisitor();
 				method.accept(methodInvVisitor);
 				
-				Node nodeMethodDecla = new Node(type.getName().toString() + "." + method.getName().toString());
-				nodes.add(nodeMethodDecla);
+				// Creation d'un noeud pour chaques méthodes
+				Node nodeMethod = new Node(type.getName().toString() + "." + method.getName().toString());
+				nodes.add(nodeMethod);
 				
 				
 				if (methodInvVisitor.getMethods().size() != 0)
@@ -484,41 +484,45 @@ public class Parser {
 
 					for (MethodInvocation methodInvocation : methodInvVisitor.getMethods())
 					{
-						
+						// Si invoqué à partir d'un objet
 						if (methodInvocation.getExpression() != null)
 						{
 							
 							if (methodInvocation.getExpression().resolveTypeBinding() != null)
 							{
-								
+								// On créer un noeud qui représente la méthode invoqué
 								Node nodeMethodInv = new Node(methodInvocation.getExpression().resolveTypeBinding().getName() + "." + methodInvocation.getName().toString());
 								nodes.add(nodeMethodInv);
-								links.add(new Link(nodeMethodDecla.getNode(), nodeMethodInv.getNode()));
+								
+								// On ajoute un lien entre les deux méthodes
+								links.add(new Link(nodeMethod.getNode(), nodeMethodInv.getNode()));
 							}
 						}
+						// Sinon invoque sans objets
 						else {
 							
 							Node nodeMethodInv = new Node(methodInvocation.getName().toString());
 							nodes.add(nodeMethodInv);
-							links.add(new Link(nodeMethodDecla.getNode(), nodeMethodInv.getNode()));
+							links.add(new Link(nodeMethod.getNode(), nodeMethodInv.getNode()));
 						}
 					}
 				}
 			}
 		}
 		
-		
 		// Ajoute les noued et les liens au graphe
 		Graph<String, DefaultEdge> graph = new DefaultDirectedGraph<String, DefaultEdge>(DefaultEdge.class);
 		
-		for (Node node : nodes) {
+		for (Node node : nodes)
+		{
 			graph.addVertex(node.getNode());
 		}
-		for (Link link : links) {
+		for (Link link : links)
+		{
 			graph.addEdge(link.getNodeA(), link.getNodeB());
 		}
 		
-		System.out.println(graph.toString());
+		// System.out.println(graph.toString());
 
 		// Affiche et exporte le graphe en .dot
 		DOTExporter<String, DefaultEdge> exporter = new DOTExporter<String, DefaultEdge>();
@@ -528,6 +532,7 @@ public class Parser {
             map.put("label", DefaultAttribute.createAttribute(v.toString()));
             return map;
         });
+        
         Writer buffer = new StringWriter();
         exporter.exportGraph(graph, buffer);
         exporter.exportGraph(graph, new File("results/graph.dot"));
