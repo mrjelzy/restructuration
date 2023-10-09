@@ -28,6 +28,7 @@ import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
@@ -39,9 +40,7 @@ import org.jgrapht.nio.dot.DOTExporter;
 import graph.Link;
 import graph.Node;
 
-import guru.nidi.graphviz.model.MutableGraph;
-
-import org.eclipse.jdt.core.dom.TypeDeclaration;
+//import guru.nidi.graphviz.model.MutableGraph;
 
 public class Parser {
 
@@ -70,6 +69,7 @@ public class Parser {
 		
 		String rep= "";
 		
+		// Tant que l'utilisateur ne souhaite pas quitter, on affiche le menu
 		while (!rep.equalsIgnoreCase("x"))
 		{
 			System.out.println("Bienvenue sur l'analyse de programme !");
@@ -96,16 +96,27 @@ public class Parser {
 				System.out.println("11. Les classes qui possèdent plus de X méthodes");
 				System.out.println("12. Les 10% des méthodes qui possèdent le plus grand nombre de lignes de code");
 				System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application");
+				System.out.println("");
 				System.out.print("Rentrer le numero de la question : ");
 				rep = scan.next();
-				System.out.println("Traitement en cours ...");
-				printExo1(Integer.parseInt(rep), javaFiles);
+				
+				if(Integer.parseInt(rep) < 1 || Integer.parseInt(rep) > 13)
+				{
+					System.out.println("Numéro de question inconnus");
+				} else
+				{
+					System.out.println("Traitement en cours ...");
+					printExo1(Integer.parseInt(rep), javaFiles);
+				}
+				
+				System.out.println("");
 				
 			} else if (rep.equalsIgnoreCase("2"))
 			{
 				rep= "";
 				System.out.println("Exercice 2 :");
 				System.out.println("Traitement en cours ...");
+				System.out.println("");
 		        printExo2(javaFiles);
 			}
 			System.out.println("-----------------------------------");
@@ -126,9 +137,10 @@ public class Parser {
 		}
         
         printCallGraph(classVisitor);
-        System.out.println("Voici le graphe d'appel du programme analysé, le fichier .dot est automatiquement créé dans le dossier /résultats.");
+        System.out.println("Voici le graphe d'appel du programme analysé, le fichier .dot est automatiquement créé dans le dossier /results.");
 	}
 
+	// Traite la réponse à la question donné en parcourants les fichiers de l'application cible
 	private static void printExo1(Integer rep, ArrayList<File> javaFiles) throws IOException
 	{
 		PackageDeclarationVisitor packageVisitor = new PackageDeclarationVisitor();
@@ -142,11 +154,10 @@ public class Parser {
 		
 		int nbLines = 0;
 
-		//
+		// Parse tous les fichiers et fait passer les visiteur dans chaques nodes
 		for (File fileEntry : javaFiles) {
 			String content = FileUtils.readFileToString(fileEntry);
-			// System.out.println(content);
-
+			
 			CompilationUnit parse = parse(content.toCharArray());
 			nbLines += countLineNumber(parse);
 			  
@@ -180,8 +191,9 @@ public class Parser {
 		Map<String, Integer> MethodLineCountMapSorted = sortDescending(MethodLineCountMap);        
 		Map<String, Integer> top10MethodsByLineCount = getTopPercentage(MethodLineCountMapSorted, 0.1);
 		
-		//System.out.println("-----------------------------------");
+		System.out.println("");
 		
+		// Affiche le bon résultat en fonction de la question demandé
 		switch (rep)
 		{
 			case 1:
@@ -258,6 +270,9 @@ public class Parser {
 				System.out.println("13. Le nombre maximal de paramètres par rapport à toutes les méthodes l’application.");
 		        showMethodWithMaximalParameters(methodVisitor);
 		        break;
+	        default:
+	        	System.out.println("Cette question n'existe pas");
+	        	break;
 		}
 	}
 
@@ -319,6 +334,7 @@ public class Parser {
 		parse.accept(visitor);
 	}
 
+	// Renvoi le nombre de lignes dans toutes les méthode récupérés par un visitor
 	public static int countMethodsLines(MethodDeclarationVisitor visitor) {
 
 		int totalLinesOfCodeInMethod = 0;
@@ -331,6 +347,7 @@ public class Parser {
 		return totalLinesOfCodeInMethod;
 	}
 	
+	// 
 	public static void ClassesByMethodCount(CompilationUnit parse, Map<String, Integer> classMethodCountMap) {
 		
 		TypeDeclarationVisitor visitor = new TypeDeclarationVisitor();
@@ -445,27 +462,6 @@ public class Parser {
 	       return sortedHashMap;
 	 }
 	
-	public static String getLink(InputStream inputStream) throws IOException
-	{
-		if (inputStream != null) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream)))
-            {
-                StringBuilder contenu = new StringBuilder();
-                String ligne;
-                while ((ligne = reader.readLine()) != null)
-                {
-                    contenu.append(ligne);
-                }
-                return(contenu.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else {
-            System.err.println("Le fichier n'a pas été trouvé.");
-        }
-		return null;
-    }
-	
 	public static void printCallGraph(TypeDeclarationVisitor classVisitor) throws IOException
 	{
 		List<Node> nodes = new ArrayList<Node>();
@@ -511,8 +507,9 @@ public class Parser {
 		}
 		
 		
-		// Add vertex and edges to the graph
+		// Ajoute les noued et les liens au graphe
 		Graph<String, DefaultEdge> graph = new DefaultDirectedGraph<String, DefaultEdge>(DefaultEdge.class);
+		
 		for (Node node : nodes) {
 			graph.addVertex(node.getNode());
 		}
@@ -522,9 +519,10 @@ public class Parser {
 		
 		System.out.println(graph.toString());
 
-		// Export the graph in a dot file
+		// Affiche et exporte le graphe en .dot
 		DOTExporter<String, DefaultEdge> exporter = new DOTExporter<String, DefaultEdge>();
-        exporter.setVertexAttributeProvider((v) -> {
+        exporter.setVertexAttributeProvider((v) ->
+        {
             Map<String, Attribute> map = new LinkedHashMap<String, Attribute>();
             map.put("label", DefaultAttribute.createAttribute(v.toString()));
             return map;
@@ -533,9 +531,6 @@ public class Parser {
         exporter.exportGraph(graph, buffer);
         exporter.exportGraph(graph, new File("results/graph.dot"));
         
-        MutableGraph mGraph = new guru.nidi.graphviz.parse.Parser().read(buffer.toString());
         System.out.println(buffer.toString());
-
-        //Graphviz.fromGraph(graph).height(1000).render(Format.PNG).toFile(new File("results/graph.png"));
 	}
 }
